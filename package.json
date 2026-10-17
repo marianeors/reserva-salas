@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:setup": "prisma migrate deploy && prisma generate"
+    "db:setup": "prisma migrate deploy && prisma generate && prisma db seed"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.10.0",
@@ -26,6 +26,7 @@
     "eslint-config-next": "16.4.2",
     "prisma": "7.10.0",
     "tailwindcss": "^4",
+    "tsx": "4.23.15",
     "typescript": "^5"
   },
   "allowScripts": {
