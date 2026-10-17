@@ -28,6 +28,10 @@ npm run typecheck   # TypeScript em modo strict
 npm run lint        # ESLint
 ```
 
+O CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) roda essas mesmas verificações, mais o `next build`, em todo PR e push para `main` e `develop`.
+
+Os testes ficam ao lado do código que testam (`arquivo.ts` + `arquivo.test.ts`). O Next.js não impõe um local para testes, e assim cada regra de negócio fica junto do seu teste, inclusive na leitura dos PRs.
+
 ### Dados do seed
 
 | Usuário | E-mail | Papel |
@@ -46,7 +50,7 @@ São 7 salas (6 ativas e 1 desativada), com capacidades de 4 a 20 pessoas e comb
 | Banco | SQLite | Relacional, sem servidor para instalar. Quem avalia roda o projeto em 3 comandos. |
 | ORM / migrations | Prisma 7 | Schema declarativo, migrations versionadas e client tipado. |
 | Mutations | Server Actions + Zod _(planejado)_ | Validação no servidor com o mesmo schema usado para tipar a entrada. |
-| UI | Tailwind CSS + shadcn/ui _(planejado)_ | Componentes acessíveis, copiados para o projeto (sem dependência de lib de UI fechada). |
+| UI | Tailwind CSS + shadcn/ui _(shadcn/ui planejado para o SALA-1)_ | Componentes acessíveis, copiados para o projeto (sem dependência de lib de UI fechada). |
 | Testes | Vitest | Rápido, com suporte nativo a TypeScript e sem configuração de transpilação. |
 
 ## Decisões
@@ -118,7 +122,7 @@ As regras de reserva ficam como **funções puras num único módulo de domínio
 - `feature/SALA-n-descricao`: um PR por card, para `develop`.
 - `release/x.y.z` e `hotfix/...` seguem o Git flow clássico.
 
-As branches `main` e `develop` são protegidas: merge só via PR, sem push direto (nem de administradores) e sem force push.
+As branches `main` e `develop` são protegidas: merge só via PR, sem push direto (nem de administradores), sem force push e com o CI passando.
 
 Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommits.org/).
 
