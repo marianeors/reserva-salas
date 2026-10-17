@@ -20,18 +20,6 @@ enum BookingStatus {
   CANCELLED
 }
 
-enum AuditEntity {
-  ROOM
-  BOOKING
-}
-
-enum AuditAction {
-  ROOM_CREATED
-  ROOM_UPDATED
-  BOOKING_CREATED
-  BOOKING_CANCELLED
-}
-
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -39,8 +27,7 @@ model User {
   role      Role     @default(USER)
   createdAt DateTime @default(now())
 
-  bookings  Booking[]
-  auditLogs AuditLog[]
+  bookings Booking[]
 }
 
 model Room {
@@ -95,23 +82,4 @@ model Booking {
   // Suporta a checagem de sobreposição (mesma sala, intervalo de horário).
   @@index([roomId, startsAt])
   @@index([userId])
-}
-
-// Histórico append-only: gravado na mesma transação da ação auditada.
-model AuditLog {
-  id         String      @id @default(cuid())
-  actorId    String
-  action     AuditAction
-  entityType AuditEntity
-  // Sem FK de propósito: o registro sobrevive à entidade.
-  entityId   String
-  // Snapshots da entidade antes/depois da ação.
-  before     Json?
-  after      Json?
-  createdAt  DateTime    @default(now())
-
-  actor User @relation(fields: [actorId], references: [id])
-
-  @@index([entityType, entityId])
-  @@index([actorId])
 }

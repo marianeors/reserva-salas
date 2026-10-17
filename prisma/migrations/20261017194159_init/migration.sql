@@ -48,19 +48,6 @@ CREATE TABLE "Booking" (
     CONSTRAINT "Booking_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- CreateTable
-CREATE TABLE "AuditLog" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "actorId" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
-    "entityType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "before" JSONB,
-    "after" JSONB,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -78,9 +65,3 @@ CREATE INDEX "Booking_roomId_startsAt_idx" ON "Booking"("roomId", "startsAt");
 
 -- CreateIndex
 CREATE INDEX "Booking_userId_idx" ON "Booking"("userId");
-
--- CreateIndex
-CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
-
--- CreateIndex
-CREATE INDEX "AuditLog_actorId_idx" ON "AuditLog"("actorId");

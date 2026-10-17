@@ -51,7 +51,6 @@ erDiagram
     Room ||--o{ Booking : "é reservada em"
     Room ||--o{ RoomResource : ""
     Resource ||--o{ RoomResource : ""
-    User ||--o{ AuditLog : "executa"
 
     User {
         string id PK
@@ -82,15 +81,6 @@ erDiagram
         BookingStatus status
         datetime cancelledAt
     }
-    AuditLog {
-        string id PK
-        string actorId FK
-        AuditAction action
-        AuditEntity entityType
-        string entityId
-        json before
-        json after
-    }
 ```
 
 - **Recursos como tabela N:N (`Resource` + `RoomResource`)**, em vez de texto ou JSON na sala. O filtro "salas com projetor" vira uma consulta relacional simples, e a lista de recursos fica normalizada.
@@ -104,17 +94,6 @@ erDiagram
 O SQLite não tem constraint de exclusão para intervalos (como o `EXCLUDE` do PostgreSQL). Por isso a regra de sobreposição fica no código: uma reserva conflita se, na mesma sala, existe outra **ativa** com `início < novo fim` **e** `fim > novo início`. A checagem e a inserção rodam na **mesma transação**, para evitar que duas requisições simultâneas reservem o mesmo horário _(planejado no SALA-2)_. O índice `(roomId, startsAt)` atende essa consulta.
 
 As regras de reserva ficam como **funções puras num único módulo de domínio** _(planejado)_. Isso facilita os testes unitários e deixa as regras de horário útil (SALA-5) e de duração por sala (SALA-6) lado a lado.
-
-### Auditoria
-
-A tabela `AuditLog` registra quem fez o quê: criação e edição de salas, criação e cancelamento de reservas. Ela não era exigida pelo desafio. Foi incluída porque um sistema de reservas costuma precisar responder perguntas como "quem cancelou esta reserva?".
-
-- **Uma tabela genérica**, em vez de uma tabela de histórico por entidade. Ela não precisa mudar quando o schema evolui (por exemplo, no SALA-6).
-- **Append-only**, com snapshots `before`/`after` em JSON.
-- **Gravada na mesma transação da ação auditada.** Se a ação falhar, o log também não é gravado.
-- **`entityId` sem chave estrangeira**, de propósito, para o registro sobreviver à entidade.
-- O seed não gera registros de auditoria, porque não é uma ação de usuário.
-- Por enquanto não há tela para consultar o histórico (ver [O que ficou de fora](#o-que-ficou-de-fora)).
 
 ### Setup e ambiente
 
@@ -134,13 +113,15 @@ As branches `main` e `develop` são protegidas: merge só via PR, sem push diret
 
 Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommits.org/).
 
-**SALA-0** é um card de setup criado por mim (não existe no enunciado). Ele reúne a configuração inicial: Prisma, schema, seed, testes, CI e este README.
+**SALA-0** é um card de setup criado por mim (não existe no enunciado). Ele cobre o passo 1 do Git flow (lint, testes e CI) e também o banco: schema, migration inicial e seed. O banco entra no setup porque o projeto precisa "subir com dados em até 3 comandos" antes de qualquer card, e porque os cards SALA-1 a SALA-4 dependem das mesmas tabelas. Assim cada PR de feature fica focado na funcionalidade.
 
 ## O que ficou de fora
 
-_(a preencher ao final do desafio)_
+_(a completar ao final do desafio)_
 
-- Tela de consulta do histórico de auditoria.
+### Melhorias futuras
+
+- **Histórico de auditoria.** Uma tabela `AuditLog` append-only registraria quem criou ou editou salas e quem criou ou cancelou reservas, com snapshots antes/depois em JSON, gravados na mesma transação da ação. Ela chegou a ser modelada, mas foi retirada do escopo: não é pedida no desafio, e o tempo foi priorizado para os requisitos obrigatórios. O cancelamento por status (sem apagar a linha) já preserva o histórico básico das reservas.
 
 ## Arquitetura na AWS
 
