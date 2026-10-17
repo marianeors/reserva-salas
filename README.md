@@ -20,6 +20,14 @@ Não é preciso criar `.env`: sem `DATABASE_URL`, o projeto usa o SQLite local `
 
 O seed é idempotente, então `npm run db:setup` pode ser executado de novo sem duplicar dados.
 
+### Verificações
+
+```bash
+npm test            # testes (Vitest)
+npm run typecheck   # TypeScript em modo strict
+npm run lint        # ESLint
+```
+
 ### Dados do seed
 
 | Usuário | E-mail | Papel |
@@ -39,7 +47,7 @@ São 7 salas (6 ativas e 1 desativada), com capacidades de 4 a 20 pessoas e comb
 | ORM / migrations | Prisma 7 | Schema declarativo, migrations versionadas e client tipado. |
 | Mutations | Server Actions + Zod _(planejado)_ | Validação no servidor com o mesmo schema usado para tipar a entrada. |
 | UI | Tailwind CSS + shadcn/ui _(planejado)_ | Componentes acessíveis, copiados para o projeto (sem dependência de lib de UI fechada). |
-| Testes | Vitest _(planejado)_ | Rápido, com suporte nativo a TypeScript. |
+| Testes | Vitest | Rápido, com suporte nativo a TypeScript e sem configuração de transpilação. |
 
 ## Decisões
 
@@ -100,6 +108,7 @@ As regras de reserva ficam como **funções puras num único módulo de domínio
 - **Setup em 3 comandos.** `DATABASE_URL` tem valor padrão em [`src/lib/database-url.ts`](src/lib/database-url.ts), compartilhado pelo Prisma CLI e pela aplicação. Assim o `.env` é opcional.
 - **Seed idempotente** (upsert por campos únicos). As reservas de exemplo entram no SALA-2, validadas pelas mesmas regras de domínio da aplicação. Assim o seed não grava dados que o próprio sistema rejeitaria.
 - **Versões fixadas.** No momento do setup, a tag `latest` do Prisma no npm apontava para uma release candidate (`8.0.0-rc`). Por isso o Prisma está fixado na `7.10.0` estável. As demais dependências novas também usam versão exata.
+- **`@types/node` alinhado ao Node 24.** O create-next-app gera `@types/node` 20, mas o projeto roda em Node 24, e o Vitest 5 exige tipos do Node 22 ou superior.
 - **Scripts de instalação aprovados explicitamente** (`allowScripts` no `package.json`). Só `prisma`, `@prisma/engines` e `better-sqlite3` (binário nativo do SQLite) estão liberados.
 
 ## Fluxo de trabalho (Git flow)
