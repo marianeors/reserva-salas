@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RoomListItem } from "../queries";
 
 export function RoomList({ rooms }: { rooms: RoomListItem[] }) {
@@ -35,6 +37,11 @@ export function RoomList({ rooms }: { rooms: RoomListItem[] }) {
                 <span className="text-sm text-muted-foreground">Sem recursos</span>
               )}
             </CardContent>
+            <CardFooter>
+              <Link href={`/salas/${room.id}`} className={buttonVariants({ size: "sm" })}>
+                Reservar
+              </Link>
+            </CardFooter>
           </Card>
         </li>
       ))}
