@@ -4,7 +4,9 @@ Sistema de reserva de salas de reunião, desenvolvido como desafio técnico **Fu
 
 Usuários escolhem uma sala, data e horário e fazem a reserva. As regras de negócio (sem sobreposição, sem horário no passado, limites de duração) são validadas no servidor. Administradores cadastram e editam salas.
 
-> 🚧 Em desenvolvimento. Este README é atualizado a cada card. Itens marcados como _(planejado)_ ainda não foram implementados.
+**Versão atual: [1.1.0](CHANGELOG.md)** · tags [`v1.0.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0), [`v1.0.1`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.1) e [`v1.1.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.1.0)
+
+**Atalhos:** [Como rodar](#como-rodar) · [Stack](#stack) · [Decisões](#decisões) · [Git flow](#fluxo-de-trabalho-git-flow) · [O que ficou de fora](#o-que-ficou-de-fora) · [Próximos passos](#próximos-passos) · [AWS](#arquitetura-na-aws)
 
 ## Como rodar
 
@@ -116,7 +118,7 @@ erDiagram
 - **Valores inválidos na URL são ignorados** (ex.: `?capacidade=abc`), em vez de quebrar a página, já que qualquer pessoa pode editar o link. A leitura dos filtros é uma função pura testada ([`filters.ts`](src/features/rooms/filters.ts)).
 - **Cache Components (Next 16):** o título da página é pré-renderizado, e a lista, que depende da URL e do banco, é renderizada a cada requisição dentro de um `<Suspense>`. Não há cache de dados, para a listagem refletir na hora as edições do admin.
 - **Código organizado por funcionalidade** (`src/features/rooms`: filtros, consultas e componentes). `src/app` fica só com as rotas, seguindo a estratégia "store project files outside of `app`" da documentação do Next.
-- **Consultas numa Data Access Layer** ([`queries.ts`](src/features/rooms/queries.ts)), padrão recomendado pelo guia de segurança de dados do Next. É o único ponto de acesso ao banco para salas, devolve objetos enxutos (não a linha inteira do banco) e é o lugar onde ficam as checagens de permissão nos próximos cards. O arquivo é marcado com `import "server-only"`: se for importado por um componente de navegador, o build falha. O `db.ts` não leva essa marcação porque o seed também o usa, fora do Next.
+- **Consultas numa Data Access Layer** ([`queries.ts`](src/features/rooms/queries.ts)), padrão recomendado pelo guia de segurança de dados do Next. É o único ponto de acesso ao banco para salas, devolve objetos enxutos (não a linha inteira do banco) e o mesmo padrão foi seguido nas reservas e no admin. O arquivo é marcado com `import "server-only"`: se for importado por um componente de navegador, o build falha. O `db.ts` não leva essa marcação porque o seed também o usa, fora do Next.
 
 ### Login fake e permissões
 
@@ -127,7 +129,7 @@ erDiagram
 ### Reservas (SALA-2)
 
 - **Fluxo:** cada card de sala tem "Reservar", que leva a `/salas/[id]`, com o formulário (data, início, fim) e a lista das próximas reservas da sala, para ver os horários ocupados antes de enviar.
-- **Regras como funções puras** em [`rules.ts`](src/features/bookings/rules.ts): fim depois do início, sem passado, duração mínima de 15 min e máxima de 4 h (limite por sala a partir do SALA-6), sem sobreposição. Elas recebem "agora" e as reservas existentes como parâmetro, sem acessar banco nem relógio, por isso são testáveis isoladamente. Os cards SALA-5 (horário útil) e SALA-6 (duração por sala) vão mexer neste mesmo módulo.
+- **Regras como funções puras** em [`rules.ts`](src/features/bookings/rules.ts): fim depois do início, sem passado, duração mínima de 15 min e máxima de 4 h (limite por sala a partir do SALA-6), sem sobreposição. Elas recebem "agora" e as reservas existentes como parâmetro, sem acessar banco nem relógio, por isso são testáveis isoladamente. O hotfix SALA-5 (horário comercial) e o SALA-6 (duração por sala) mexeram neste mesmo módulo, o que gerou o conflito resolvido no [#10](https://github.com/marianeors/reserva-salas/pull/10).
 - **Fuso horário:** o horário digitado é de Brasília, convertido para UTC num único ponto ([`time.ts`](src/features/bookings/time.ts)) com deslocamento fixo de **-03:00**. O Brasil não tem horário de verão desde 2019, e isso evita uma biblioteca de fuso. Se o horário de verão voltar, a mudança fica nesse arquivo. A exibição usa `Intl` com `America/Sao_Paulo`. O "hoje" do formulário é calculado no servidor, então não depende do fuso do navegador.
 - **Datas inexistentes são recusadas.** O JavaScript transforma 31/02 em 03/03 sem avisar. A conversão confere se a data continua a mesma que foi digitada, e a Server Action barra a data inválida antes de chegar ao banco. Esse bug foi pego por um teste.
 - **Uma mensagem por vez:** a validação devolve a primeira regra violada, com uma mensagem clara em português.
@@ -149,6 +151,13 @@ erDiagram
 - **Por que 404 e não 403:** o Next tem `forbidden()` (403), mas ele ainda é experimental nesta versão. O 404 é estável e não revela que a área existe.
 - **Campos:** nome (único, de 2 a 60 caracteres), capacidade (de 1 a 100), recursos e ativa/desativada, validados com Zod no servidor ([`room-form.ts`](src/features/rooms/room-form.ts), com testes). Nome repetido retorna "Já existe uma sala com esse nome", em vez de um erro de banco.
 - **Desativar, nunca apagar.** Ao desativar uma sala com reservas futuras, as reservas continuam valendo, mas a sala sai da listagem e não aceita novas reservas. Bloquear a desativação criaria um impasse, porque o admin não pode cancelar reservas de outras pessoas (SALA-3).
+
+### Horário comercial (hotfix SALA-5)
+
+- **Regra:** a reserva precisa caber **inteira** num dia útil (segunda a sexta), entre **08h e 20h** no horário de Brasília. Começar às 08h e terminar às 20h é permitido; uma reserva que atravessa a meia-noite é recusada.
+- **Mensagens específicas** para cada caso: dia não útil ou fora do horário.
+- **Hotfix mínimo:** saiu da `main` (v1.0.0) só com a regra, as mensagens, os testes e a versão 1.0.1, sem mudanças de tela, para reduzir o risco em produção.
+- **Conflito com a SALA-6** no merge de volta em `develop`, resolvido mantendo as duas regras. A explicação está no [#10](https://github.com/marianeors/reserva-salas/pull/10), incluindo um conflito que o Git não detectou e o typecheck pegou.
 
 ### Duração máxima por sala (SALA-6)
 
@@ -190,21 +199,83 @@ A checagem e a inserção rodam na **mesma transação** ([`createBookingIfAvail
 
 As branches `main` e `develop` são protegidas: merge só via PR, sem push direto (nem de administradores), sem force push e com o CI passando.
 
-Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommits.org/).
+Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommits.org/). Todo PR tem descrição com o quê, por quê e como testar.
+
+**Histórico, na ordem pedida pelo desafio:**
+
+| passo | PR | resultado |
+|---|---|---|
+| Setup: commit inicial na `main`, `develop`, lint, testes e CI | [#1](https://github.com/marianeors/reserva-salas/pull/1) | SALA-0 |
+| Features SALA-1 a SALA-4, um PR por card | [#2](https://github.com/marianeors/reserva-salas/pull/2) · [#3](https://github.com/marianeors/reserva-salas/pull/3) · [#4](https://github.com/marianeors/reserva-salas/pull/4) · [#5](https://github.com/marianeors/reserva-salas/pull/5) | — |
+| Release 1.0.0 → `main`, CHANGELOG, merge de volta | [#6](https://github.com/marianeors/reserva-salas/pull/6) · [#7](https://github.com/marianeors/reserva-salas/pull/7) | tag `v1.0.0` |
+| SALA-6 em `develop`, antes do hotfix | [#8](https://github.com/marianeors/reserva-salas/pull/8) | — |
+| Hotfix SALA-5 a partir da `main` | [#9](https://github.com/marianeors/reserva-salas/pull/9) | tag `v1.0.1` |
+| Merge do hotfix em `develop`, com conflito com a SALA-6 resolvido e explicado | [#10](https://github.com/marianeors/reserva-salas/pull/10) | — |
+| Release 1.1.0 → `main`, merge de volta | [#11](https://github.com/marianeors/reserva-salas/pull/11) · [#12](https://github.com/marianeors/reserva-salas/pull/12) | tag `v1.1.0` |
 
 **SALA-0** é um card de setup criado por mim (não existe no enunciado). Ele cobre o passo 1 do Git flow (lint, testes e CI) e também o banco: schema, migration inicial e seed. O banco entra no setup porque o projeto precisa "subir com dados em até 3 comandos" antes de qualquer card, e porque os cards SALA-1 a SALA-4 dependem das mesmas tabelas. Assim cada PR de feature fica focado na funcionalidade.
 
 ## O que ficou de fora
 
-_(a completar ao final do desafio)_
+O tempo foi priorizado para os requisitos obrigatórios e para a qualidade das regras de negócio. As horas não foram medidas com precisão, então os itens abaixo são registrados como decisões de escopo, não como corte por tempo.
 
-- **Mensagens do formulário de reserva sem JavaScript.** A reserva funciona sem JavaScript (é criada ou recusada corretamente), mas a mensagem de confirmação ou erro só aparece com JavaScript ligado.
-- **Feriados no horário comercial (SALA-5).** A regra aceita reservas de segunda a sexta, das 08h às 20h, mas não conhece feriados, porque isso exigiria um calendário de feriados (nacionais e locais). Reservas já existentes fora do horário continuam valendo; a regra vale para reservas novas.
+**Por decisão de escopo**
 
-### Melhorias futuras
+- **Histórico de auditoria.** Uma tabela `AuditLog` append-only registraria quem criou ou editou salas e quem criou ou cancelou reservas, com snapshots antes/depois, gravados na mesma transação da ação. Ela chegou a ser modelada, mas foi retirada porque o desafio não pede. O cancelamento por status já preserva o histórico básico das reservas.
+- **Feriados no horário comercial (SALA-5).** A regra aceita reservas de segunda a sexta, das 08h às 20h, mas não conhece feriados, porque isso exigiria um calendário de feriados nacionais e locais.
+- **Login real.** O desafio dispensa. O cookie guarda só o ID do usuário e não é assinado.
+- **Admin cancelar reservas de outras pessoas.** O desafio diz "apenas as próprias". Ao desativar uma sala, as reservas futuras continuam valendo e ninguém é avisado.
+- **Editar uma reserva** (hoje só é possível cancelar e criar de novo) e **cadastro de recursos** pelo admin (a lista vem do seed).
+- **Deploy.** O desafio dispensa; a proposta está em [Arquitetura na AWS](#arquitetura-na-aws).
 
-- **Histórico de auditoria.** Uma tabela `AuditLog` append-only registraria quem criou ou editou salas e quem criou ou cancelou reservas, com snapshots antes/depois em JSON, gravados na mesma transação da ação. Ela chegou a ser modelada, mas foi retirada do escopo: não é pedida no desafio, e o tempo foi priorizado para os requisitos obrigatórios. O cancelamento por status (sem apagar a linha) já preserva o histórico básico das reservas.
+**Limitações técnicas conhecidas**
+
+- **Sem testes automatizados de ponta a ponta nem de integração com banco.** As regras (sobreposição, permissão de cancelamento, hotfix, duração por sala) têm testes unitários. Os fluxos completos, incluindo tentativas forjadas de burlar permissões, foram testados manualmente com requisições HTTP contra o servidor de produção local, mas esses scripts não estão no repositório.
+- **Concorrência depende do SQLite**, que serializa as escritas. Com vários servidores, a transação sozinha não basta; em produção, a sobreposição seria garantida pelo banco (ver [AWS](#arquitetura-na-aws)).
+- **Fuso fixo em UTC-3.** Se o horário de verão voltar, a mudança fica concentrada em [`time.ts`](src/features/bookings/time.ts).
+- **Mensagens do formulário de reserva sem JavaScript.** A reserva funciona sem JavaScript, mas a mensagem de confirmação ou erro só aparece com JavaScript ligado.
+- **`admin.access_denied` pode ser registrado em dobro**, porque é logado durante a renderização da página.
+- **`npm audit` aponta 4 alertas "high" em dependências de produção** (`mysql2` e `deepmerge-ts`, que chegam junto com o Prisma). O risco é baixo, porque o projeto não usa MySQL; a correção é atualizar o Prisma quando houver uma versão corrigida. `npm audit fix --force` não foi usado, porque trocaria versões fixadas por versões incompatíveis.
+- **Sem rate limiting, cabeçalhos de segurança (CSP) nem paginação** nas listas.
+
+## Próximos passos
+
+**Produto**, em ordem de valor para o usuário:
+
+1. **Buscar salas livres num horário**: filtrar por data e horário disponível, além de capacidade e recurso.
+2. **Agenda da sala** em formato de calendário (dia ou semana), em vez de lista.
+3. **Ajuda no formulário**: horários limitados às 08h–20h em passos de 15 min, e o limite da sala avisado antes de enviar.
+4. **Notificações por e-mail**: confirmação, cancelamento e aviso quando uma sala for desativada.
+5. **Histórico de auditoria** com tela para o admin; **edição de reservas**; **cadastro de recursos**.
+
+**Engenharia:**
+
+1. **Testes de ponta a ponta com Playwright no CI** (login, reserva, cancelamento, acesso ao admin) e testes de integração da transação de reserva.
+2. **PostgreSQL em produção** com constraint `EXCLUDE`, para o próprio banco impedir sobreposição.
+3. **Login real**, com sessão assinada ou um provedor de identidade (ex.: Cognito ou SSO da empresa).
+4. **Métricas e alertas** a partir dos logs estruturados, e rastreamento com OpenTelemetry (suportado pelo `instrumentation.ts` do Next).
+5. **Dependabot** e `npm audit` no CI.
 
 ## Arquitetura na AWS
 
-_(planejado)_
+O app rodaria como contêiner no **Amazon ECS com Fargate**, numa VPC com subnets privadas, atrás de um **Application Load Balancer**. Na frente ficariam **CloudFront** (cache dos arquivos estáticos do Next) e **AWS WAF** (rate limiting e proteção contra abuso). O banco seria **Amazon RDS for PostgreSQL** (Multi-AZ em produção) no lugar do SQLite: o Prisma só troca o provider, e o PostgreSQL permite uma constraint `EXCLUDE` que impede reservas sobrepostas no próprio banco. A `DATABASE_URL` e os demais segredos ficam no **AWS Secrets Manager**, injetados na tarefa do ECS, com permissões IAM mínimas, e nunca no repositório. Há dois ambientes isolados, **teste (staging)** e **produção**, de preferência em contas AWS separadas e com infraestrutura idêntica descrita em código (Terraform ou CDK). O **GitHub Actions** constrói a imagem uma vez e a publica no **Amazon ECR**: merge na `develop` faz deploy em staging, e uma tag `vX.Y.Z` na `main` promove **a mesma imagem** para produção. Antes de liberar a nova versão, uma tarefa avulsa roda `prisma migrate deploy`. Os logs em JSON vão para o **CloudWatch Logs**, com filtros de métrica e alarmes (por exemplo, picos de `request.error` ou de `booking.cancel_denied`).
+
+```mermaid
+flowchart LR
+    U[Usuários] --> CF[CloudFront + WAF]
+    CF --> ALB[Application Load Balancer]
+
+    subgraph VPC["VPC (subnets privadas)"]
+        ALB --> ECS[ECS Fargate<br/>app Next.js]
+        ECS --> RDS[(RDS PostgreSQL<br/>Multi-AZ)]
+    end
+
+    SM[Secrets Manager<br/>DATABASE_URL] -. injeta segredos .-> ECS
+    ECS -. logs JSON .-> CW[CloudWatch Logs<br/>métricas e alarmes]
+
+    GH[GitHub Actions] -->|build| ECR[ECR<br/>imagem]
+    ECR -->|merge na develop| STG[Ambiente de teste<br/>staging]
+    ECR -->|tag vX.Y.Z na main| ECS
+```
+
+> O diagrama mostra o ambiente de produção. O de teste (staging) tem a mesma estrutura, em conta e banco separados.
