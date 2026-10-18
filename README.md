@@ -42,6 +42,10 @@ Os testes ficam ao lado do código que testam (`arquivo.ts` + `arquivo.test.ts`)
 
 São 7 salas (6 ativas e 1 desativada), com capacidades de 4 a 20 pessoas e combinações dos recursos Projetor, TV, Videoconferência e Quadro branco. A variedade existe para exercitar os filtros por capacidade e por recurso.
 
+Há também 3 reservas de exemplo no próximo dia útil (09h–12h), para a demo sempre mostrar reservas futuras.
+
+Para entrar, acesse `/entrar` e escolha um usuário ("Entrar como").
+
 ## Stack
 
 | Camada | Escolha | Por quê |
@@ -49,7 +53,7 @@ São 7 salas (6 ativas e 1 desativada), com capacidades de 4 a 20 pessoas e comb
 | Framework | Next.js 16 (App Router) + TypeScript `strict` | Requisito do desafio. Front e back no mesmo projeto. |
 | Banco | SQLite | Relacional, sem servidor para instalar. Quem avalia roda o projeto em 3 comandos. |
 | ORM / migrations | Prisma 7 | Schema declarativo, migrations versionadas e client tipado. |
-| Mutations | Server Actions + Zod _(planejado)_ | Validação no servidor com o mesmo schema usado para tipar a entrada. |
+| Mutations | Server Actions | Mutação chamada direto do formulário, executada e validada no servidor, sem API REST à parte. |
 | UI | Tailwind CSS + shadcn/ui (Base UI) | Componentes acessíveis, copiados para o projeto em `src/components/ui` (sem dependência de lib de UI fechada). |
 | Validação | Zod | Converte e valida entradas não confiáveis (URL e formulários) com tipagem. |
 | Testes | Vitest | Rápido, com suporte nativo a TypeScript e sem configuração de transpilação. |
@@ -114,16 +118,38 @@ erDiagram
 - **Código organizado por funcionalidade** (`src/features/rooms`: filtros, consultas e componentes). `src/app` fica só com as rotas, seguindo a estratégia "store project files outside of `app`" da documentação do Next.
 - **Consultas numa Data Access Layer** ([`queries.ts`](src/features/rooms/queries.ts)), padrão recomendado pelo guia de segurança de dados do Next. É o único ponto de acesso ao banco para salas, devolve objetos enxutos (não a linha inteira do banco) e é o lugar onde ficam as checagens de permissão nos próximos cards. O arquivo é marcado com `import "server-only"`: se for importado por um componente de navegador, o build falha. O `db.ts` não leva essa marcação porque o seed também o usa, fora do Next.
 
+### Login fake e permissões
+
+- **"Entrar como"** em `/entrar`: o usuário escolhe alguém do seed, e o servidor grava **só o ID** num cookie `httpOnly`. A Server Action recusa IDs que não existem no banco.
+- **O servidor decide tudo.** [`getCurrentUser`](src/features/auth/session.ts) lê o cookie e carrega o usuário do banco a cada requisição. Quem faz a reserva vem sempre do cookie, nunca de um campo do formulário. Cada Server Action confere o usuário de novo, como recomenda o guia de autenticação do Next.
+- **Limitação assumida:** o cookie não é assinado, então quem editar o cookie à mão "vira" outro usuário. É o esperado de um login fake, que o desafio dispensa. Num login real, a sessão seria assinada ou criptografada (ou viria de um provedor de identidade).
+
+### Reservas (SALA-2)
+
+- **Fluxo:** cada card de sala tem "Reservar", que leva a `/salas/[id]`, com o formulário (data, início, fim) e a lista das próximas reservas da sala, para ver os horários ocupados antes de enviar.
+- **Regras como funções puras** em [`rules.ts`](src/features/bookings/rules.ts): fim depois do início, sem passado, duração de 15 min a 4 h, sem sobreposição. Elas recebem "agora" e as reservas existentes como parâmetro, sem acessar banco nem relógio, por isso são testáveis isoladamente. Os cards SALA-5 (horário útil) e SALA-6 (duração por sala) vão mexer neste mesmo módulo.
+- **Fuso horário:** o horário digitado é de Brasília, convertido para UTC num único ponto ([`time.ts`](src/features/bookings/time.ts)) com deslocamento fixo de **-03:00**. O Brasil não tem horário de verão desde 2019, e isso evita uma biblioteca de fuso. Se o horário de verão voltar, a mudança fica nesse arquivo. A exibição usa `Intl` com `America/Sao_Paulo`. O "hoje" do formulário é calculado no servidor, então não depende do fuso do navegador.
+- **Datas inexistentes são recusadas.** O JavaScript transforma 31/02 em 03/03 sem avisar. A conversão confere se a data continua a mesma que foi digitada, e a Server Action barra a data inválida antes de chegar ao banco. Esse bug foi pego por um teste.
+- **Uma mensagem por vez:** a validação devolve a primeira regra violada, com uma mensagem clara em português.
+- **Depois de reservar**, a página é atualizada (`refresh()`), mostra a confirmação e a nova reserva aparece na lista.
+
 ### Sobreposição de reservas
 
-O SQLite não tem constraint de exclusão para intervalos (como o `EXCLUDE` do PostgreSQL). Por isso a regra de sobreposição fica no código: uma reserva conflita se, na mesma sala, existe outra **ativa** com `início < novo fim` **e** `fim > novo início`. A checagem e a inserção rodam na **mesma transação**, para evitar que duas requisições simultâneas reservem o mesmo horário _(planejado no SALA-2)_. O índice `(roomId, startsAt)` atende essa consulta.
+O SQLite não tem constraint de exclusão para intervalos (como o `EXCLUDE` do PostgreSQL). Por isso a regra de sobreposição fica no código: uma reserva conflita se, na mesma sala, existe outra **ativa** com `início < novo fim` **e** `fim > novo início`. Os intervalos são semiabertos, então uma reserva que termina às 10h **não** conflita com outra que começa às 10h.
 
-As regras de reserva ficam como **funções puras num único módulo de domínio** _(planejado)_. Isso facilita os testes unitários e deixa as regras de horário útil (SALA-5) e de duração por sala (SALA-6) lado a lado.
+A checagem e a inserção rodam na **mesma transação** ([`createBookingIfAvailable`](src/features/bookings/queries.ts)), para evitar que duas requisições simultâneas reservem o mesmo horário. O banco só filtra as reservas ativas da sala que ainda não terminaram, e a decisão de conflito fica na função pura testada.
+
+### Observabilidade
+
+- **Logs estruturados:** [`logger.ts`](src/lib/logger.ts) escreve uma linha JSON por evento na saída padrão, sem dependência nova. Em produção, cada campo vira filtrável no CloudWatch Logs.
+- **Eventos de negócio:** `auth.signed_in`, `booking.created` e `booking.rejected`, com o motivo (`OVERLAP`, `IN_PAST`, `TOO_LONG`...). Assim dá para medir quais regras mais barram reservas.
+- **Erros inesperados:** [`instrumentation.ts`](src/instrumentation.ts) usa o `onRequestError` do Next para registrar todo erro não tratado no servidor, no mesmo formato.
+- **Privacidade:** só IDs e metadados. Nunca nome, e-mail ou headers da requisição (eles carregam cookies).
 
 ### Setup e ambiente
 
 - **Setup em 3 comandos.** `DATABASE_URL` tem valor padrão em [`src/lib/database-url.ts`](src/lib/database-url.ts), compartilhado pelo Prisma CLI e pela aplicação. Assim o `.env` é opcional.
-- **Seed idempotente** (upsert por campos únicos). As reservas de exemplo entram no SALA-2, validadas pelas mesmas regras de domínio da aplicação. Assim o seed não grava dados que o próprio sistema rejeitaria.
+- **Seed idempotente** (upsert por campos únicos). As reservas de exemplo são calculadas a partir do dia em que o seed roda e validadas pelas mesmas regras da aplicação, então o seed não grava dados que o próprio sistema recusaria. Se uma delas conflitar com uma reserva já existente, ela é pulada com um aviso, sem quebrar o setup.
 - **Versões fixadas.** No momento do setup, a tag `latest` do Prisma no npm apontava para uma release candidate (`8.0.0-rc`). Por isso o Prisma está fixado na `7.10.0` estável. As demais dependências novas também usam versão exata, de releases com pelo menos duas semanas. O `shadcn init` instala as versões mais recentes de tudo (algumas publicadas dois dias antes), então as dependências dele foram refixadas à mão, e o `shadcn` foi movido para `devDependencies`, já que só é usado no build.
 - **`@types/node` alinhado ao Node 24.** O create-next-app gera `@types/node` 20, mas o projeto roda em Node 24, e o Vitest 5 exige tipos do Node 22 ou superior.
 - **Scripts de instalação aprovados explicitamente** (`allowScripts` no `package.json`). Só `prisma`, `@prisma/engines` e `better-sqlite3` (binário nativo do SQLite) estão liberados.
@@ -144,6 +170,8 @@ Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommi
 ## O que ficou de fora
 
 _(a completar ao final do desafio)_
+
+- **Mensagens do formulário de reserva sem JavaScript.** A reserva funciona sem JavaScript (é criada ou recusada corretamente), mas a mensagem de confirmação ou erro só aparece com JavaScript ligado.
 
 ### Melhorias futuras
 
