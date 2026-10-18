@@ -28,7 +28,8 @@ type CreateBookingInput = {
 
 export type CreateBookingResult =
   | { ok: true; bookingId: string }
-  | { ok: false; reason: BookingRuleViolation | "ROOM_NOT_FOUND" };
+  | { ok: false; reason: "ROOM_NOT_FOUND" }
+  | { ok: false; reason: BookingRuleViolation; maxDurationMinutes: number };
 
 // Checagem de sobreposição e inserção na MESMA transação: duas requisições
 // simultâneas não conseguem reservar o mesmo horário.
@@ -39,8 +40,12 @@ export async function createBookingIfAvailable({
   now,
 }: CreateBookingInput): Promise<CreateBookingResult> {
   return db.$transaction(async (tx) => {
-    const room = await tx.room.findFirst({ where: { id: roomId, isActive: true }, select: { id: true } });
+    const room = await tx.room.findFirst({
+      where: { id: roomId, isActive: true },
+      select: { maxDurationMinutes: true },
+    });
     if (!room) return { ok: false, reason: "ROOM_NOT_FOUND" };
+    const { maxDurationMinutes } = room;
 
     // Só reservas ativas que ainda não terminaram quando a nova começa;
     // a regra de sobreposição (função pura) decide se há conflito.
@@ -49,8 +54,8 @@ export async function createBookingIfAvailable({
       select: { startsAt: true, endsAt: true },
     });
 
-    const violation = validateBooking({ booking, now, existing });
-    if (violation) return { ok: false, reason: violation };
+    const violation = validateBooking({ booking, now, existing, maxDurationMinutes });
+    if (violation) return { ok: false, reason: violation, maxDurationMinutes };
 
     const created = await tx.booking.create({
       data: { roomId, userId, startsAt: booking.startsAt, endsAt: booking.endsAt },

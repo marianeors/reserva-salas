@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/features/auth/session";
 import { logger } from "@/lib/logger";
 import { cancelBookingIfAllowed, createBookingIfAvailable } from "./queries";
-import { cancelViolationMessages, violationMessages } from "./rules";
+import { cancelViolationMessages, violationMessage } from "./rules";
 import { formatDate, formatTime, minutesBetween, toUtcDate } from "./time";
 
 const bookingFormSchema = z.object({
@@ -44,7 +44,9 @@ export async function createBooking(_prev: BookingFormState, formData: FormData)
   if (!result.ok) {
     logger.warn("booking.rejected", { reason: result.reason, roomId, userId: user.id });
     const message =
-      result.reason === "ROOM_NOT_FOUND" ? "Sala não encontrada." : violationMessages[result.reason];
+      result.reason === "ROOM_NOT_FOUND"
+        ? "Sala não encontrada."
+        : violationMessage(result.reason, result.maxDurationMinutes);
     return { status: "error", message, values: { date, startTime, endTime } };
   }
 

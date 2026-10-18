@@ -15,25 +15,53 @@ const users = [
 
 const resources = ["Projetor", "TV", "Videoconferência", "Quadro branco"];
 
+// maxDurationMinutes varia por sala (SALA-6): salas pequenas para reuniões
+// rápidas, auditório para eventos longos.
 const rooms = [
-  { name: "Sala Aurora", capacity: 4, isActive: true, resources: ["TV"] },
-  { name: "Sala Brisa", capacity: 6, isActive: true, resources: ["TV", "Quadro branco"] },
-  { name: "Sala Cerrado", capacity: 8, isActive: true, resources: ["Projetor", "Quadro branco"] },
-  { name: "Sala Delta", capacity: 10, isActive: true, resources: ["Projetor", "Videoconferência"] },
+  { name: "Sala Aurora", capacity: 4, maxDurationMinutes: 60, isActive: true, resources: ["TV"] },
+  {
+    name: "Sala Brisa",
+    capacity: 6,
+    maxDurationMinutes: 120,
+    isActive: true,
+    resources: ["TV", "Quadro branco"],
+  },
+  {
+    name: "Sala Cerrado",
+    capacity: 8,
+    maxDurationMinutes: 240,
+    isActive: true,
+    resources: ["Projetor", "Quadro branco"],
+  },
+  {
+    name: "Sala Delta",
+    capacity: 10,
+    maxDurationMinutes: 240,
+    isActive: true,
+    resources: ["Projetor", "Videoconferência"],
+  },
   {
     name: "Sala Estrela",
     capacity: 12,
+    maxDurationMinutes: 180,
     isActive: true,
     resources: ["TV", "Videoconferência", "Quadro branco"],
   },
   {
     name: "Auditório Farol",
     capacity: 20,
+    maxDurationMinutes: 480,
     isActive: true,
     resources: ["Projetor", "Videoconferência", "Quadro branco"],
   },
   // Desativada: demonstra que salas não são apagadas, apenas desativadas.
-  { name: "Sala Gávea", capacity: 6, isActive: false, resources: ["Quadro branco"] },
+  {
+    name: "Sala Gávea",
+    capacity: 6,
+    maxDurationMinutes: 240,
+    isActive: false,
+    resources: ["Quadro branco"],
+  },
 ];
 
 async function main() {
@@ -58,6 +86,7 @@ async function main() {
       where: { name: room.name },
       update: {
         capacity: room.capacity,
+        maxDurationMinutes: room.maxDurationMinutes,
         isActive: room.isActive,
         resources: { deleteMany: {}, ...roomResources },
       },
@@ -108,7 +137,7 @@ async function seedBookings() {
       where: { roomId: room.id, status: "ACTIVE", id: { not: sample.id } },
       select: { startsAt: true, endsAt: true },
     });
-    const violation = validateBooking({ booking, now, existing });
+    const violation = validateBooking({ booking, now, existing, maxDurationMinutes: room.maxDurationMinutes });
     // Não quebra o setup se alguém já reservou esse horário: só pula o exemplo.
     if (violation) {
       console.warn(`Reserva de exemplo ${sample.id} ignorada: ${violation}`);
