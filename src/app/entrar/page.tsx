@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,8 @@ export default function EntrarPage() {
 }
 
 async function UserOptions() {
+  // Lê o banco a cada requisição, nunca no build (no CI não há banco).
+  await connection();
   const users = await listUsersForSignIn();
 
   return (
