@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Clock, Users } from "lucide-react";
+import { formatDuration } from "@/features/bookings/time";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +22,15 @@ export function RoomList({ rooms }: { rooms: RoomListItem[] }) {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>{room.name}</CardTitle>
-              <CardDescription className="flex items-center gap-1.5">
-                <Users className="size-4" aria-hidden />
-                Até {room.capacity} pessoas
+              <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="flex items-center gap-1.5">
+                  <Users className="size-4" aria-hidden />
+                  Até {room.capacity} pessoas
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="size-4" aria-hidden />
+                  Reservas de até {formatDuration(room.maxDurationMinutes)}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-1.5">

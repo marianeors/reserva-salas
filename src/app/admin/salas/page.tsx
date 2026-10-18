@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { requireAdmin } from "@/features/auth/session";
+import { formatDuration } from "@/features/bookings/time";
 import { listRoomsForAdmin } from "@/features/rooms/queries";
 
 export const metadata: Metadata = {
@@ -43,7 +44,8 @@ async function AdminRooms() {
                 {!room.isActive && <Badge variant="outline">Desativada</Badge>}
               </span>
               <span className="text-sm text-muted-foreground">
-                Até {room.capacity} pessoas · {room.resources.join(", ") || "Sem recursos"}
+                Até {room.capacity} pessoas · reservas de até {formatDuration(room.maxDurationMinutes)} ·{" "}
+                {room.resources.join(", ") || "Sem recursos"}
               </span>
             </div>
             <Link

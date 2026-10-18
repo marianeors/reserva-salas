@@ -104,7 +104,7 @@ erDiagram
 - **Cancelar reserva muda o status (`ACTIVE` → `CANCELLED`)** e preenche `cancelledAt`, sem apagar a linha. A reserva cancelada deixa de bloquear o horário, mas o histórico continua consultável.
 - **Salas são desativadas (`isActive`), não apagadas.** As chaves estrangeiras de `Booking` usam `ON DELETE RESTRICT`, então apagar uma sala com reservas quebraria o histórico. Desativar mantém a integridade e tira a sala da listagem.
 - **Datas em UTC no banco; regras de horário no fuso fixo `America/Sao_Paulo`.** Assim o comportamento não depende do fuso do servidor nem do navegador.
-- **A duração máxima por sala não está no schema inicial.** O campo entra numa migration própria no card SALA-6, que substitui o limite fixo de 4 h. Assim o histórico de migrations acompanha a evolução dos requisitos.
+- **A duração máxima por sala não estava no schema inicial.** O campo `maxDurationMinutes` entrou numa migration própria (`add_room_max_duration`) no card SALA-6, que substitui o limite fixo de 4 h. Assim o histórico de migrations acompanha a evolução dos requisitos.
 
 ### Listagem e filtros (SALA-1)
 
@@ -127,7 +127,7 @@ erDiagram
 ### Reservas (SALA-2)
 
 - **Fluxo:** cada card de sala tem "Reservar", que leva a `/salas/[id]`, com o formulário (data, início, fim) e a lista das próximas reservas da sala, para ver os horários ocupados antes de enviar.
-- **Regras como funções puras** em [`rules.ts`](src/features/bookings/rules.ts): fim depois do início, sem passado, duração de 15 min a 4 h, sem sobreposição. Elas recebem "agora" e as reservas existentes como parâmetro, sem acessar banco nem relógio, por isso são testáveis isoladamente. Os cards SALA-5 (horário útil) e SALA-6 (duração por sala) vão mexer neste mesmo módulo.
+- **Regras como funções puras** em [`rules.ts`](src/features/bookings/rules.ts): fim depois do início, sem passado, duração mínima de 15 min e máxima de 4 h (limite por sala a partir do SALA-6), sem sobreposição. Elas recebem "agora" e as reservas existentes como parâmetro, sem acessar banco nem relógio, por isso são testáveis isoladamente. Os cards SALA-5 (horário útil) e SALA-6 (duração por sala) vão mexer neste mesmo módulo.
 - **Fuso horário:** o horário digitado é de Brasília, convertido para UTC num único ponto ([`time.ts`](src/features/bookings/time.ts)) com deslocamento fixo de **-03:00**. O Brasil não tem horário de verão desde 2019, e isso evita uma biblioteca de fuso. Se o horário de verão voltar, a mudança fica nesse arquivo. A exibição usa `Intl` com `America/Sao_Paulo`. O "hoje" do formulário é calculado no servidor, então não depende do fuso do navegador.
 - **Datas inexistentes são recusadas.** O JavaScript transforma 31/02 em 03/03 sem avisar. A conversão confere se a data continua a mesma que foi digitada, e a Server Action barra a data inválida antes de chegar ao banco. Esse bug foi pego por um teste.
 - **Uma mensagem por vez:** a validação devolve a primeira regra violada, com uma mensagem clara em português.
@@ -149,6 +149,15 @@ erDiagram
 - **Por que 404 e não 403:** o Next tem `forbidden()` (403), mas ele ainda é experimental nesta versão. O 404 é estável e não revela que a área existe.
 - **Campos:** nome (único, de 2 a 60 caracteres), capacidade (de 1 a 100), recursos e ativa/desativada, validados com Zod no servidor ([`room-form.ts`](src/features/rooms/room-form.ts), com testes). Nome repetido retorna "Já existe uma sala com esse nome", em vez de um erro de banco.
 - **Desativar, nunca apagar.** Ao desativar uma sala com reservas futuras, as reservas continuam valendo, mas a sala sai da listagem e não aceita novas reservas. Bloquear a desativação criaria um impasse, porque o admin não pode cancelar reservas de outras pessoas (SALA-3).
+
+### Duração máxima por sala (SALA-6)
+
+- **Cada sala tem a sua duração máxima** (`maxDurationMinutes`), que **substitui o limite fixo de 4 h** do SALA-2. A v1.0.0 tem o limite fixo; a v1.1.0 traz o limite por sala.
+- **Migração sem mudança de comportamento:** as salas que já existiam recebem 4 h como valor padrão, então nada muda até o admin editar uma sala.
+- **O limite pode passar de 4 h.** "Substitui o limite fixo" foi interpretado como "o limite fixo deixa de existir". O admin escolhe de 15 min (a duração mínima de uma reserva) a 8 h. No seed, o Auditório Farol aceita até 8 h, e a Sala Aurora só 1 h.
+- **A regra continua pura:** `validateBooking` recebe o limite da sala como parâmetro, e a mensagem informa o limite ("Nesta sala, a reserva pode ter no máximo 1 h").
+- **O usuário vê o limite antes de reservar:** "Reservas de até X" aparece no card e na página da sala.
+- **Reduzir o limite não afeta reservas existentes:** o limite vale para reservas novas, mesma lógica da desativação de sala.
 
 ### Sobreposição de reservas
 

@@ -4,6 +4,18 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e o projeto usa [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2026-10-18
+
+Duração máxima de reserva definida por sala.
+
+### Adicionado
+
+- **Duração máxima por sala (SALA-6)**: cada sala tem sua própria duração máxima de reserva, de 15 min a 8 h, editável pelo admin e exibida no card e na página da sala. Salas existentes começam com 4 h. ([#8](https://github.com/marianeors/reserva-salas/pull/8))
+
+### Alterado
+
+- O limite fixo de 4 h por reserva foi substituído pelo limite de cada sala. A regra de horário comercial da 1.0.1 continua valendo junto com ele. ([#10](https://github.com/marianeors/reserva-salas/pull/10))
+
 ## [1.0.1] - 2026-10-18
 
 Hotfix para um incidente em produção.
@@ -25,5 +37,6 @@ Primeira versão: listagem, reserva e cancelamento de salas, com administração
 - **Admin de salas (SALA-4)**: cadastro, edição e desativação de salas. Usuários comuns não acessam a área, nem pela URL. ([#5](https://github.com/marianeors/reserva-salas/pull/5))
 - **Observabilidade**: logs estruturados em JSON para eventos de negócio e registro de erros inesperados do servidor. ([#3](https://github.com/marianeors/reserva-salas/pull/3))
 
+[1.1.0]: https://github.com/marianeors/reserva-salas/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/marianeors/reserva-salas/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0

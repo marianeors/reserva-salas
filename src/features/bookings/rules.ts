@@ -1,9 +1,11 @@
 // Regras de reserva como funções puras: sem banco, sem relógio global.
 // Quem chama informa "agora" e as reservas existentes, o que torna tudo testável.
-import { minutesBetween, toLocalParts } from "./time";
+import { formatDuration, minutesBetween, toLocalParts } from "./time";
 
 export const MIN_DURATION_MINUTES = 15;
-export const MAX_DURATION_MINUTES = 4 * 60;
+// Cada sala define sua duração máxima (SALA-6), dentro destes limites.
+export const DEFAULT_MAX_DURATION_MINUTES = 4 * 60;
+export const MAX_ROOM_DURATION_MINUTES = 8 * 60;
 // Horário comercial (SALA-5), em minutos do dia no horário de Brasília.
 export const BUSINESS_START_MINUTE = 8 * 60;
 export const BUSINESS_END_MINUTE = 20 * 60;
@@ -22,15 +24,18 @@ export type BookingRuleViolation =
   | "TOO_LONG"
   | "OVERLAP";
 
-export const violationMessages: Record<BookingRuleViolation, string> = {
-  INVALID_RANGE: "O horário de fim precisa ser depois do início.",
-  IN_PAST: "Não é possível reservar no passado.",
-  NOT_BUSINESS_DAY: "Reservas só podem ser feitas em dias úteis (segunda a sexta).",
-  OUTSIDE_BUSINESS_HOURS: "Reservas só podem acontecer entre 08h e 20h.",
-  TOO_SHORT: `A reserva precisa ter pelo menos ${MIN_DURATION_MINUTES} minutos.`,
-  TOO_LONG: `A reserva pode ter no máximo ${MAX_DURATION_MINUTES / 60} horas.`,
-  OVERLAP: "A sala já está reservada nesse horário.",
-};
+export function violationMessage(violation: BookingRuleViolation, maxDurationMinutes: number): string {
+  const messages: Record<BookingRuleViolation, string> = {
+    INVALID_RANGE: "O horário de fim precisa ser depois do início.",
+    IN_PAST: "Não é possível reservar no passado.",
+    NOT_BUSINESS_DAY: "Reservas só podem ser feitas em dias úteis (segunda a sexta).",
+    OUTSIDE_BUSINESS_HOURS: "Reservas só podem acontecer entre 08h e 20h.",
+    TOO_SHORT: `A reserva precisa ter pelo menos ${MIN_DURATION_MINUTES} minutos.`,
+    TOO_LONG: `Nesta sala, a reserva pode ter no máximo ${formatDuration(maxDurationMinutes)}.`,
+    OVERLAP: "A sala já está reservada nesse horário.",
+  };
+  return messages[violation];
+}
 
 // SALA-5: a reserva precisa caber inteira num dia útil, entre 08h e 20h
 // (horário de Brasília). Começar às 08h e terminar às 20h é permitido.
@@ -60,10 +65,17 @@ type ValidateInput = {
   now: Date;
   // Reservas ATIVAS da mesma sala.
   existing: TimeRange[];
+  // Duração máxima definida pela sala (SALA-6).
+  maxDurationMinutes: number;
 };
 
 // Retorna a primeira regra violada, ou null se a reserva é válida.
-export function validateBooking({ booking, now, existing }: ValidateInput): BookingRuleViolation | null {
+export function validateBooking({
+  booking,
+  now,
+  existing,
+  maxDurationMinutes,
+}: ValidateInput): BookingRuleViolation | null {
   const duration = minutesBetween(booking.startsAt, booking.endsAt);
 
   // "!(duration > 0)" também pega datas inválidas (ex.: 31/02), cuja duração é NaN.
@@ -72,7 +84,7 @@ export function validateBooking({ booking, now, existing }: ValidateInput): Book
   const businessHours = checkBusinessHours(booking);
   if (businessHours) return businessHours;
   if (duration < MIN_DURATION_MINUTES) return "TOO_SHORT";
-  if (duration > MAX_DURATION_MINUTES) return "TOO_LONG";
+  if (duration > maxDurationMinutes) return "TOO_LONG";
   if (existing.some((other) => overlaps(booking, other))) return "OVERLAP";
 
   return null;

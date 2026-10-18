@@ -36,6 +36,8 @@ model Room {
   capacity Int
   // Salas não são apagadas (podem ter reservas); o admin as desativa.
   isActive Boolean @default(true)
+  // Duração máxima de uma reserva nesta sala (SALA-6). Padrão: 4 h.
+  maxDurationMinutes Int @default(240)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

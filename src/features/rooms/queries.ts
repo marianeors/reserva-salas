@@ -22,6 +22,7 @@ export async function listRooms({ minCapacity, resources }: RoomFilters) {
     id: room.id,
     name: room.name,
     capacity: room.capacity,
+    maxDurationMinutes: room.maxDurationMinutes,
     resources: room.resources.map(({ resource }) => resource.name).sort(),
   }));
 }
@@ -39,6 +40,7 @@ export async function getActiveRoom(id: string) {
     id: room.id,
     name: room.name,
     capacity: room.capacity,
+    maxDurationMinutes: room.maxDurationMinutes,
     resources: room.resources.map(({ resource }) => resource.name).sort(),
   };
 }
@@ -61,6 +63,7 @@ export async function listRoomsForAdmin() {
     id: room.id,
     name: room.name,
     capacity: room.capacity,
+    maxDurationMinutes: room.maxDurationMinutes,
     isActive: room.isActive,
     resources: room.resources.map(({ resource }) => resource.name).sort(),
   }));
@@ -74,6 +77,7 @@ export async function getRoomForEdit(id: string) {
     id: room.id,
     name: room.name,
     capacity: room.capacity,
+    maxDurationMinutes: room.maxDurationMinutes,
     isActive: room.isActive,
     resourceIds: room.resources.map(({ resourceId }) => resourceId),
   };

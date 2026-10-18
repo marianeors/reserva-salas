@@ -5,12 +5,20 @@ import { useActionState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DEFAULT_MAX_DURATION_MINUTES,
+  MAX_ROOM_DURATION_MINUTES,
+  MIN_DURATION_MINUTES,
+} from "@/features/bookings/rules";
 import { saveRoomAction, type RoomFormState } from "../actions";
 import { MAX_ROOM_CAPACITY, type RoomFormValues } from "../room-form";
 
 type Props = {
   // Ausente = cadastro de sala nova.
-  room?: { id: string } & Omit<RoomFormValues, "capacity"> & { capacity: number };
+  room?: { id: string } & Omit<RoomFormValues, "capacity" | "maxDurationMinutes"> & {
+    capacity: number;
+    maxDurationMinutes: number;
+  };
   resources: { id: string; name: string }[];
 };
 
@@ -26,6 +34,7 @@ export function RoomForm({ room, resources }: Props) {
       : {
           name: room?.name ?? "",
           capacity: room ? String(room.capacity) : "",
+          maxDurationMinutes: String(room?.maxDurationMinutes ?? DEFAULT_MAX_DURATION_MINUTES),
           resourceIds: room?.resourceIds ?? [],
           isActive: room?.isActive ?? true,
         };
@@ -51,6 +60,24 @@ export function RoomForm({ room, resources }: Props) {
           required
           className="w-32"
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="maxDurationMinutes">Duração máxima de uma reserva (minutos)</Label>
+        <Input
+          id="maxDurationMinutes"
+          name="maxDurationMinutes"
+          type="number"
+          min={MIN_DURATION_MINUTES}
+          max={MAX_ROOM_DURATION_MINUTES}
+          step={15}
+          defaultValue={values.maxDurationMinutes}
+          required
+          className="w-32"
+        />
+        <p className="text-xs text-muted-foreground">
+          De {MIN_DURATION_MINUTES} a {MAX_ROOM_DURATION_MINUTES} minutos (8 h). Ex.: 60 = 1 h, 240 = 4 h.
+        </p>
       </div>
 
       <fieldset className="flex flex-col gap-2">
