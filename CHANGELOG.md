@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e o projeto usa [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.0.1] - 2026-10-18
+
+Hotfix para um incidente em produção.
+
+### Corrigido
+
+- **Horário comercial (SALA-5)**: reservas só podem acontecer em dias úteis (segunda a sexta), das 08h às 20h, no horário de Brasília. Antes era possível reservar em fins de semana e a qualquer hora. ([#9](https://github.com/marianeors/reserva-salas/pull/9))
+
 ## [1.0.0] - 2026-10-18
 
 Primeira versão: listagem, reserva e cancelamento de salas, com administração de salas.
@@ -17,4 +25,5 @@ Primeira versão: listagem, reserva e cancelamento de salas, com administração
 - **Admin de salas (SALA-4)**: cadastro, edição e desativação de salas. Usuários comuns não acessam a área, nem pela URL. ([#5](https://github.com/marianeors/reserva-salas/pull/5))
 - **Observabilidade**: logs estruturados em JSON para eventos de negócio e registro de erros inesperados do servidor. ([#3](https://github.com/marianeors/reserva-salas/pull/3))
 
+[1.0.1]: https://github.com/marianeors/reserva-salas/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0

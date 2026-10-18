@@ -16,6 +16,16 @@ export function toUtcDate(date: string, time: string): Date {
   return backToLocal === `${date}T${time}` ? result : new Date(NaN);
 }
 
+// Data, dia da semana (0 = domingo) e minuto do dia no horário de Brasília.
+export function toLocalParts(date: Date) {
+  const local = new Date(date.getTime() + UTC_OFFSET_MS);
+  return {
+    date: local.toISOString().slice(0, 10),
+    weekday: local.getUTCDay(),
+    minuteOfDay: local.getUTCHours() * 60 + local.getUTCMinutes(),
+  };
+}
+
 export function minutesBetween(start: Date, end: Date): number {
   return Math.round((end.getTime() - start.getTime()) / 60_000);
 }
