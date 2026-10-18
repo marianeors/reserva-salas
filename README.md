@@ -199,6 +199,7 @@ Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommi
 _(a completar ao final do desafio)_
 
 - **Mensagens do formulário de reserva sem JavaScript.** A reserva funciona sem JavaScript (é criada ou recusada corretamente), mas a mensagem de confirmação ou erro só aparece com JavaScript ligado.
+- **Feriados no horário comercial (SALA-5).** A regra aceita reservas de segunda a sexta, das 08h às 20h, mas não conhece feriados, porque isso exigiria um calendário de feriados (nacionais e locais). Reservas já existentes fora do horário continuam valendo; a regra vale para reservas novas.
 
 ### Melhorias futuras
 
