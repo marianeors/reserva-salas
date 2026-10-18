@@ -1,7 +1,13 @@
 // Data Access Layer de reservas.
 import "server-only";
 import { db } from "@/lib/db";
-import { validateBooking, type BookingRuleViolation, type TimeRange } from "./rules";
+import {
+  canCancelBooking,
+  validateBooking,
+  type BookingRuleViolation,
+  type CancelViolation,
+  type TimeRange,
+} from "./rules";
 
 export async function listUpcomingRoomBookings(roomId: string, now: Date) {
   const bookings = await db.booking.findMany({
@@ -51,5 +57,64 @@ export async function createBookingIfAvailable({
       select: { id: true },
     });
     return { ok: true, bookingId: created.id };
+  });
+}
+
+// Sempre filtra pelo usuário logado: não existe forma de listar reservas de outra pessoa.
+export async function listUserBookings(userId: string, now: Date) {
+  const bookings = await db.booking.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+      room: { select: { id: true, name: true } },
+    },
+    orderBy: { startsAt: "asc" },
+  });
+
+  const items = bookings.map(({ room, ...booking }) => ({
+    ...booking,
+    roomId: room.id,
+    roomName: room.name,
+    // Mesma regra usada no cancelamento: o botão só aparece quando é permitido.
+    canCancel: canCancelBooking({ booking: { ...booking, userId }, userId, now }) === null,
+  }));
+  const isUpcoming = (b: (typeof items)[number]) => b.status === "ACTIVE" && b.endsAt > now;
+
+  return {
+    upcoming: items.filter(isUpcoming),
+    // Histórico: mais recentes primeiro.
+    history: items.filter((b) => !isUpcoming(b)).reverse(),
+  };
+}
+
+export type UserBooking = Awaited<ReturnType<typeof listUserBookings>>["upcoming"][number];
+
+export type CancelBookingResult = { ok: true } | { ok: false; reason: CancelViolation | "NOT_FOUND" };
+
+export async function cancelBookingIfAllowed({
+  bookingId,
+  userId,
+  now,
+}: {
+  bookingId: string;
+  userId: string;
+  now: Date;
+}): Promise<CancelBookingResult> {
+  return db.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { userId: true, status: true, startsAt: true },
+    });
+    if (!booking) return { ok: false, reason: "NOT_FOUND" };
+
+    const violation = canCancelBooking({ booking, userId, now });
+    if (violation) return { ok: false, reason: violation };
+
+    // Cancelar não apaga: muda o status e libera o horário.
+    await tx.booking.update({ where: { id: bookingId }, data: { status: "CANCELLED", cancelledAt: now } });
+    return { ok: true };
   });
 }

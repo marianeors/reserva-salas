@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overlaps, validateBooking, type TimeRange } from "@/features/bookings/rules";
+import { canCancelBooking, overlaps, validateBooking, type TimeRange } from "@/features/bookings/rules";
 import { toUtcDate } from "@/features/bookings/time";
 
 // Horários em Brasília, num dia fixo, para os testes não dependerem do relógio.
@@ -67,5 +67,35 @@ describe("validateBooking", () => {
   it("aplica a duração máxima de 4 horas", () => {
     expect(validate(range("09:00", "13:00"))).toBeNull();
     expect(validate(range("09:00", "13:01"))).toBe("TOO_LONG");
+  });
+});
+
+describe("canCancelBooking (permissão de cancelamento)", () => {
+  const ana = "user-ana";
+  const bruno = "user-bruno";
+  const bookingOfAna = { userId: ana, status: "ACTIVE" as const, startsAt: at("10:00") };
+
+  it("permite que o dono cancele uma reserva futura", () => {
+    expect(canCancelBooking({ booking: bookingOfAna, userId: ana, now })).toBeNull();
+  });
+
+  it("impede que outro usuário cancele a reserva", () => {
+    expect(canCancelBooking({ booking: bookingOfAna, userId: bruno, now })).toBe("NOT_OWNER");
+  });
+
+  it("impede cancelar uma reserva já cancelada", () => {
+    const cancelled = { ...bookingOfAna, status: "CANCELLED" as const };
+    expect(canCancelBooking({ booking: cancelled, userId: ana, now })).toBe("ALREADY_CANCELLED");
+  });
+
+  it("impede cancelar uma reserva que já começou", () => {
+    expect(canCancelBooking({ booking: bookingOfAna, userId: ana, now: at("10:00") })).toBe("ALREADY_STARTED");
+    expect(canCancelBooking({ booking: bookingOfAna, userId: ana, now: at("10:30") })).toBe("ALREADY_STARTED");
+  });
+
+  it("verifica o dono antes de qualquer outra regra", () => {
+    // Para quem não é dono, a resposta é sempre NOT_OWNER: não revela o estado da reserva alheia.
+    const cancelled = { ...bookingOfAna, status: "CANCELLED" as const };
+    expect(canCancelBooking({ booking: cancelled, userId: bruno, now })).toBe("NOT_OWNER");
   });
 });

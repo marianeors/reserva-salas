@@ -133,6 +133,14 @@ erDiagram
 - **Uma mensagem por vez:** a validação devolve a primeira regra violada, com uma mensagem clara em português.
 - **Depois de reservar**, a página é atualizada (`refresh()`), mostra a confirmação e a nova reserva aparece na lista.
 
+### Minhas reservas e cancelamento (SALA-3)
+
+- **`/minhas-reservas`** (exige login) mostra **Próximas**, com o botão Cancelar, e **Histórico**, com as reservas passadas e canceladas. O histórico só existe porque cancelar muda o status em vez de apagar a linha.
+- **Só o dono cancela**, inclusive o admin: o desafio diz "apenas as próprias", então não há exceção para admin. Só reservas **ativas que ainda não começaram** podem ser canceladas. Uma reserva em andamento aparece com a etiqueta "Em andamento".
+- **Regra pura e testada:** [`canCancelBooking`](src/features/bookings/rules.ts) é usada em dois lugares: na Server Action, que decide, e na listagem, que só mostra o botão quando a regra permite. Uma regra só, sem divergência entre tela e servidor.
+- **Defesa em profundidade:** a listagem sempre filtra pelo usuário logado, e mesmo que alguém forje um envio com o ID de uma reserva alheia, a Server Action relê o usuário do cookie e recusa. A resposta é "Reserva não encontrada", para não revelar que a reserva de outra pessoa existe. A tentativa fica registrada como `booking.cancel_denied`.
+- **Confirmação nativa** do navegador ("Cancelar esta reserva?") antes de enviar, para evitar cancelamento por clique acidental.
+
 ### Sobreposição de reservas
 
 O SQLite não tem constraint de exclusão para intervalos (como o `EXCLUDE` do PostgreSQL). Por isso a regra de sobreposição fica no código: uma reserva conflita se, na mesma sala, existe outra **ativa** com `início < novo fim` **e** `fim > novo início`. Os intervalos são semiabertos, então uma reserva que termina às 10h **não** conflita com outra que começa às 10h.
@@ -142,7 +150,7 @@ A checagem e a inserção rodam na **mesma transação** ([`createBookingIfAvail
 ### Observabilidade
 
 - **Logs estruturados:** [`logger.ts`](src/lib/logger.ts) escreve uma linha JSON por evento na saída padrão, sem dependência nova. Em produção, cada campo vira filtrável no CloudWatch Logs.
-- **Eventos de negócio:** `auth.signed_in`, `booking.created` e `booking.rejected`, com o motivo (`OVERLAP`, `IN_PAST`, `TOO_LONG`...). Assim dá para medir quais regras mais barram reservas.
+- **Eventos de negócio:** `auth.signed_in`, `booking.created` e `booking.rejected`, com o motivo (`OVERLAP`, `IN_PAST`, `TOO_LONG`...), além de `booking.cancelled` e `booking.cancel_denied`. Assim dá para medir quais regras mais barram reservas, e tentativas de cancelar reservas alheias (`NOT_OWNER`) viram um sinal de segurança.
 - **Erros inesperados:** [`instrumentation.ts`](src/instrumentation.ts) usa o `onRequestError` do Next para registrar todo erro não tratado no servidor, no mesmo formato.
 - **Privacidade:** só IDs e metadados. Nunca nome, e-mail ou headers da requisição (eles carregam cookies).
 

@@ -46,3 +46,30 @@ export function validateBooking({ booking, now, existing }: ValidateInput): Book
 
   return null;
 }
+
+export type CancelViolation = "NOT_OWNER" | "ALREADY_CANCELLED" | "ALREADY_STARTED";
+
+// NOT_OWNER usa a mesma mensagem de "não encontrada": não revelamos que a
+// reserva de outra pessoa existe.
+export const cancelViolationMessages: Record<CancelViolation | "NOT_FOUND", string> = {
+  NOT_FOUND: "Reserva não encontrada.",
+  NOT_OWNER: "Reserva não encontrada.",
+  ALREADY_CANCELLED: "Esta reserva já foi cancelada.",
+  ALREADY_STARTED: "Não é possível cancelar uma reserva que já começou.",
+};
+
+type CancelInput = {
+  booking: { userId: string; status: "ACTIVE" | "CANCELLED"; startsAt: Date };
+  userId: string;
+  now: Date;
+};
+
+// Só o dono cancela (inclusive o admin só cancela as próprias), e só
+// reservas ativas que ainda não começaram.
+export function canCancelBooking({ booking, userId, now }: CancelInput): CancelViolation | null {
+  if (booking.userId !== userId) return "NOT_OWNER";
+  if (booking.status === "CANCELLED") return "ALREADY_CANCELLED";
+  if (booking.startsAt <= now) return "ALREADY_STARTED";
+
+  return null;
+}
