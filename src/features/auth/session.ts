@@ -3,10 +3,11 @@
 // permissão é decidida aqui no servidor, a partir do usuário lido do banco.
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { Role } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export const SESSION_COOKIE = "reserva_user_id";
 
@@ -30,6 +31,23 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
+  return user;
+}
+
+export function isAdmin(user: CurrentUser | null): user is CurrentUser & { role: typeof Role.ADMIN } {
+  return user?.role === Role.ADMIN;
+}
+
+// Para páginas do admin. Usuário comum recebe 404: a área nem "existe" para ele.
+// Server Actions do admin fazem a própria checagem com isAdmin().
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!isAdmin(user)) {
+    // Registrado durante a renderização: o Next pode renderizar a página mais
+    // de uma vez por requisição, então este evento pode aparecer duplicado.
+    logger.warn("admin.access_denied", { userId: user.id });
+    notFound();
+  }
   return user;
 }
 

@@ -141,6 +141,15 @@ erDiagram
 - **Defesa em profundidade:** a listagem sempre filtra pelo usuário logado, e mesmo que alguém forje um envio com o ID de uma reserva alheia, a Server Action relê o usuário do cookie e recusa. A resposta é "Reserva não encontrada", para não revelar que a reserva de outra pessoa existe. A tentativa fica registrada como `booking.cancel_denied`.
 - **Confirmação nativa** do navegador ("Cancelar esta reserva?") antes de enviar, para evitar cancelamento por clique acidental.
 
+### Admin de salas (SALA-4)
+
+- **Páginas:** `/admin/salas` lista todas as salas (as desativadas aparecem marcadas), com cadastro em `/admin/salas/nova` e edição em `/admin/salas/[id]/editar`. O link "Admin" no cabeçalho só aparece para admin, mas esconder o link é só conforto visual: a proteção está no servidor.
+- **"Nem pela URL":** cada página do admin chama [`requireAdmin()`](src/features/auth/session.ts). Sem login, vai para `/entrar`. Um usuário comum recebe **404**, para a área nem "existir" para ele. A checagem não fica só no layout, porque o guia de autenticação do Next avisa que layouts não protegem tudo.
+- **A Server Action se protege sozinha.** `saveRoomAction` checa `isAdmin()` por conta própria, já que uma Server Action pode ser chamada diretamente, sem passar pela página. Testado forjando um envio do formulário de admin com o cookie de um usuário comum: recusado, nada criado.
+- **Por que 404 e não 403:** o Next tem `forbidden()` (403), mas ele ainda é experimental nesta versão. O 404 é estável e não revela que a área existe.
+- **Campos:** nome (único, de 2 a 60 caracteres), capacidade (de 1 a 100), recursos e ativa/desativada, validados com Zod no servidor ([`room-form.ts`](src/features/rooms/room-form.ts), com testes). Nome repetido retorna "Já existe uma sala com esse nome", em vez de um erro de banco.
+- **Desativar, nunca apagar.** Ao desativar uma sala com reservas futuras, as reservas continuam valendo, mas a sala sai da listagem e não aceita novas reservas. Bloquear a desativação criaria um impasse, porque o admin não pode cancelar reservas de outras pessoas (SALA-3).
+
 ### Sobreposição de reservas
 
 O SQLite não tem constraint de exclusão para intervalos (como o `EXCLUDE` do PostgreSQL). Por isso a regra de sobreposição fica no código: uma reserva conflita se, na mesma sala, existe outra **ativa** com `início < novo fim` **e** `fim > novo início`. Os intervalos são semiabertos, então uma reserva que termina às 10h **não** conflita com outra que começa às 10h.
@@ -150,7 +159,8 @@ A checagem e a inserção rodam na **mesma transação** ([`createBookingIfAvail
 ### Observabilidade
 
 - **Logs estruturados:** [`logger.ts`](src/lib/logger.ts) escreve uma linha JSON por evento na saída padrão, sem dependência nova. Em produção, cada campo vira filtrável no CloudWatch Logs.
-- **Eventos de negócio:** `auth.signed_in`, `booking.created` e `booking.rejected`, com o motivo (`OVERLAP`, `IN_PAST`, `TOO_LONG`...), além de `booking.cancelled` e `booking.cancel_denied`. Assim dá para medir quais regras mais barram reservas, e tentativas de cancelar reservas alheias (`NOT_OWNER`) viram um sinal de segurança.
+- **Eventos de negócio:** `auth.signed_in`, `booking.created` e `booking.rejected`, com o motivo (`OVERLAP`, `IN_PAST`, `TOO_LONG`...), além de `booking.cancelled`, `booking.cancel_denied`, `room.created`, `room.updated` e `admin.access_denied`. Assim dá para medir quais regras mais barram reservas, e tentativas de cancelar reservas alheias (`NOT_OWNER`) ou de acessar o admin viram um sinal de segurança.
+- **Limitação conhecida:** eventos registrados durante a renderização de uma página (como o `admin.access_denied` ao abrir `/admin`) podem aparecer duplicados, porque o Next pode renderizar a página mais de uma vez por requisição. Eventos de Server Actions (reservas, cancelamentos, cadastro de salas) são exatos, porque elas executam uma vez só.
 - **Erros inesperados:** [`instrumentation.ts`](src/instrumentation.ts) usa o `onRequestError` do Next para registrar todo erro não tratado no servidor, no mesmo formato.
 - **Privacidade:** só IDs e metadados. Nunca nome, e-mail ou headers da requisição (eles carregam cookies).
 
