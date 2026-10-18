@@ -17,6 +17,9 @@ export async function UserMenu() {
 
   return (
     <div className="flex items-center gap-3 text-sm">
+      <Link href="/minhas-reservas" className="text-muted-foreground hover:text-foreground">
+        Minhas reservas
+      </Link>
       <span>
         {user.name}
         {user.role === "ADMIN" && <span className="text-muted-foreground"> · Admin</span>}

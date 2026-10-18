@@ -4,8 +4,8 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getCurrentUser } from "@/features/auth/session";
 import { logger } from "@/lib/logger";
-import { createBookingIfAvailable } from "./queries";
-import { violationMessages } from "./rules";
+import { cancelBookingIfAllowed, createBookingIfAvailable } from "./queries";
+import { cancelViolationMessages, violationMessages } from "./rules";
 import { formatDate, formatTime, minutesBetween, toUtcDate } from "./time";
 
 const bookingFormSchema = z.object({
@@ -61,4 +61,23 @@ export async function createBooking(_prev: BookingFormState, formData: FormData)
     status: "success",
     message: `Reserva confirmada: ${formatDate(booking.startsAt)}, das ${formatTime(booking.startsAt)} às ${formatTime(booking.endsAt)}.`,
   };
+}
+
+export type CancelBookingState = { status: "idle" } | { status: "error"; message: string };
+
+export async function cancelBooking(_prev: CancelBookingState, formData: FormData): Promise<CancelBookingState> {
+  const user = await getCurrentUser();
+  if (!user) return { status: "error", message: "Entre para cancelar uma reserva." };
+
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const result = await cancelBookingIfAllowed({ bookingId, userId: user.id, now: new Date() });
+
+  if (!result.ok) {
+    logger.warn("booking.cancel_denied", { reason: result.reason, bookingId, userId: user.id });
+    return { status: "error", message: cancelViolationMessages[result.reason] };
+  }
+
+  logger.info("booking.cancelled", { bookingId, userId: user.id });
+  refresh();
+  return { status: "idle" };
 }
