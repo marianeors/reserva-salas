@@ -1,0 +1,85 @@
+// Schema do sistema de reserva de salas.
+// Datas são armazenadas em UTC; regras de horário são validadas no fuso America/Sao_Paulo.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  bookings Booking[]
+}
+
+model Room {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  capacity Int
+  // Salas não são apagadas (podem ter reservas); o admin as desativa.
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resources RoomResource[]
+  bookings  Booking[]
+}
+
+model Resource {
+  id   String @id @default(cuid())
+  name String @unique
+
+  rooms RoomResource[]
+}
+
+model RoomResource {
+  roomId     String
+  resourceId String
+
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, resourceId])
+  @@index([resourceId])
+}
+
+model Booking {
+  id       String @id @default(cuid())
+  roomId   String
+  userId   String
+  startsAt DateTime
+  endsAt   DateTime
+
+  // Cancelar não apaga a linha: mantém o histórico e libera o horário.
+  status      BookingStatus @default(ACTIVE)
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  // Suporta a checagem de sobreposição (mesma sala, intervalo de horário).
+  @@index([roomId, startsAt])
+  @@index([userId])
+}
