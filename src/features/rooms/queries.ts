@@ -26,6 +26,21 @@ export async function listRooms({ minCapacity, resources }: RoomFilters) {
 
 export type RoomListItem = Awaited<ReturnType<typeof listRooms>>[number];
 
+export async function getActiveRoom(id: string) {
+  const room = await db.room.findFirst({
+    where: { id, isActive: true },
+    include: { resources: { include: { resource: true } } },
+  });
+  if (!room) return null;
+
+  return {
+    id: room.id,
+    name: room.name,
+    capacity: room.capacity,
+    resources: room.resources.map(({ resource }) => resource.name).sort(),
+  };
+}
+
 export async function listResources() {
   return db.resource.findMany({ orderBy: { name: "asc" } });
 }
