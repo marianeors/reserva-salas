@@ -1,24 +1,53 @@
 // Regras de reserva como funções puras: sem banco, sem relógio global.
 // Quem chama informa "agora" e as reservas existentes, o que torna tudo testável.
-import { minutesBetween } from "./time";
+import { minutesBetween, toLocalParts } from "./time";
 
 export const MIN_DURATION_MINUTES = 15;
 export const MAX_DURATION_MINUTES = 4 * 60;
+// Horário comercial (SALA-5), em minutos do dia no horário de Brasília.
+export const BUSINESS_START_MINUTE = 8 * 60;
+export const BUSINESS_END_MINUTE = 20 * 60;
 
 export type TimeRange = {
   startsAt: Date;
   endsAt: Date;
 };
 
-export type BookingRuleViolation = "INVALID_RANGE" | "IN_PAST" | "TOO_SHORT" | "TOO_LONG" | "OVERLAP";
+export type BookingRuleViolation =
+  | "INVALID_RANGE"
+  | "IN_PAST"
+  | "NOT_BUSINESS_DAY"
+  | "OUTSIDE_BUSINESS_HOURS"
+  | "TOO_SHORT"
+  | "TOO_LONG"
+  | "OVERLAP";
 
 export const violationMessages: Record<BookingRuleViolation, string> = {
   INVALID_RANGE: "O horário de fim precisa ser depois do início.",
   IN_PAST: "Não é possível reservar no passado.",
+  NOT_BUSINESS_DAY: "Reservas só podem ser feitas em dias úteis (segunda a sexta).",
+  OUTSIDE_BUSINESS_HOURS: "Reservas só podem acontecer entre 08h e 20h.",
   TOO_SHORT: `A reserva precisa ter pelo menos ${MIN_DURATION_MINUTES} minutos.`,
   TOO_LONG: `A reserva pode ter no máximo ${MAX_DURATION_MINUTES / 60} horas.`,
   OVERLAP: "A sala já está reservada nesse horário.",
 };
+
+// SALA-5: a reserva precisa caber inteira num dia útil, entre 08h e 20h
+// (horário de Brasília). Começar às 08h e terminar às 20h é permitido.
+export function checkBusinessHours(booking: TimeRange): "NOT_BUSINESS_DAY" | "OUTSIDE_BUSINESS_HOURS" | null {
+  const start = toLocalParts(booking.startsAt);
+  const end = toLocalParts(booking.endsAt);
+
+  if (start.weekday === 0 || start.weekday === 6) return "NOT_BUSINESS_DAY";
+  if (
+    end.date !== start.date ||
+    start.minuteOfDay < BUSINESS_START_MINUTE ||
+    end.minuteOfDay > BUSINESS_END_MINUTE
+  ) {
+    return "OUTSIDE_BUSINESS_HOURS";
+  }
+  return null;
+}
 
 // Intervalos semiabertos [início, fim): uma reserva que termina às 10h
 // não conflita com outra que começa às 10h.
@@ -40,6 +69,8 @@ export function validateBooking({ booking, now, existing }: ValidateInput): Book
   // "!(duration > 0)" também pega datas inválidas (ex.: 31/02), cuja duração é NaN.
   if (!(duration > 0)) return "INVALID_RANGE";
   if (booking.startsAt < now) return "IN_PAST";
+  const businessHours = checkBusinessHours(booking);
+  if (businessHours) return businessHours;
   if (duration < MIN_DURATION_MINUTES) return "TOO_SHORT";
   if (duration > MAX_DURATION_MINUTES) return "TOO_LONG";
   if (existing.some((other) => overlaps(booking, other))) return "OVERLAP";
