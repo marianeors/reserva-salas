@@ -4,7 +4,7 @@ Sistema de reserva de salas de reunião, desenvolvido como desafio técnico **Fu
 
 Usuários escolhem uma sala, data e horário e fazem a reserva. As regras de negócio (sem sobreposição, sem horário no passado, limites de duração) são validadas no servidor. Administradores cadastram e editam salas.
 
-**Versão atual: [1.1.0](CHANGELOG.md)** · tags [`v1.0.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0), [`v1.0.1`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.1) e [`v1.1.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.1.0)
+**Versão atual: [1.1.1](CHANGELOG.md)** · tags pedidas no desafio: [`v1.0.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0), [`v1.0.1`](https://github.com/marianeors/reserva-salas/releases/tag/v1.0.1) e [`v1.1.0`](https://github.com/marianeors/reserva-salas/releases/tag/v1.1.0) · [`v1.1.1`](https://github.com/marianeors/reserva-salas/releases/tag/v1.1.1) é só de documentação
 
 **Atalhos:** [Como rodar](#como-rodar) · [Stack](#stack) · [Decisões](#decisões) · [Git flow](#fluxo-de-trabalho-git-flow) · [O que ficou de fora](#o-que-ficou-de-fora) · [Próximos passos](#próximos-passos) · [AWS](#arquitetura-na-aws)
 
@@ -212,6 +212,7 @@ Os commits seguem o padrão [Conventional Commits](https://www.conventionalcommi
 | Hotfix SALA-5 a partir da `main` | [#9](https://github.com/marianeors/reserva-salas/pull/9) | tag `v1.0.1` |
 | Merge do hotfix em `develop`, com conflito com a SALA-6 resolvido e explicado | [#10](https://github.com/marianeors/reserva-salas/pull/10) | — |
 | Release 1.1.0 → `main`, merge de volta | [#11](https://github.com/marianeors/reserva-salas/pull/11) · [#12](https://github.com/marianeors/reserva-salas/pull/12) | tag `v1.1.0` |
+| Extra: README final em `develop` e release só de documentação → `main` | [#13](https://github.com/marianeors/reserva-salas/pull/13) · [#14](https://github.com/marianeors/reserva-salas/pull/14) · [#15](https://github.com/marianeors/reserva-salas/pull/15) | tag `v1.1.1` |
 
 **SALA-0** é um card de setup criado por mim (não existe no enunciado). Ele cobre o passo 1 do Git flow (lint, testes e CI) e também o banco: schema, migration inicial e seed. O banco entra no setup porque o projeto precisa "subir com dados em até 3 comandos" antes de qualquer card, e porque os cards SALA-1 a SALA-4 dependem das mesmas tabelas. Assim cada PR de feature fica focado na funcionalidade.
 

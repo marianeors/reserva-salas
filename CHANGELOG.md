@@ -4,6 +4,14 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e o projeto usa [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.1.1] - 2026-10-18
+
+Release só de documentação, para o README final chegar à `main`. Não há mudança de código.
+
+### Alterado
+
+- **README final**: arquitetura na AWS (parágrafo e diagrama), o que ficou de fora, limitações conhecidas, próximos passos e histórico do Git flow. ([#13](https://github.com/marianeors/reserva-salas/pull/13))
+
 ## [1.1.0] - 2026-10-18
 
 Duração máxima de reserva definida por sala.
@@ -37,6 +45,7 @@ Primeira versão: listagem, reserva e cancelamento de salas, com administração
 - **Admin de salas (SALA-4)**: cadastro, edição e desativação de salas. Usuários comuns não acessam a área, nem pela URL. ([#5](https://github.com/marianeors/reserva-salas/pull/5))
 - **Observabilidade**: logs estruturados em JSON para eventos de negócio e registro de erros inesperados do servidor. ([#3](https://github.com/marianeors/reserva-salas/pull/3))
 
+[1.1.1]: https://github.com/marianeors/reserva-salas/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/marianeors/reserva-salas/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/marianeors/reserva-salas/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/marianeors/reserva-salas/releases/tag/v1.0.0
