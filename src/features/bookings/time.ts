@@ -2,10 +2,18 @@
 // então o horário de Brasília é sempre UTC-3. Datas são salvas em UTC.
 export const TIME_ZONE = "America/Sao_Paulo";
 const UTC_OFFSET = "-03:00";
+const UTC_OFFSET_MS = -3 * 60 * 60_000;
 
-// "2026-10-20" + "09:30" (horário de Brasília) -> instante em UTC
+// "2026-10-20" + "09:30" (horário de Brasília) -> instante em UTC.
+// Retorna uma data inválida (NaN) para datas inexistentes.
 export function toUtcDate(date: string, time: string): Date {
-  return new Date(`${date}T${time}:00${UTC_OFFSET}`);
+  const result = new Date(`${date}T${time}:00${UTC_OFFSET}`);
+  if (Number.isNaN(result.getTime())) return result;
+
+  // O JavaScript "rola" datas inexistentes (31/02 vira 03/03) em vez de falhar.
+  // Convertendo de volta para Brasília, a data precisa ser a mesma digitada.
+  const backToLocal = new Date(result.getTime() + UTC_OFFSET_MS).toISOString().slice(0, 16);
+  return backToLocal === `${date}T${time}` ? result : new Date(NaN);
 }
 
 export function minutesBetween(start: Date, end: Date): number {

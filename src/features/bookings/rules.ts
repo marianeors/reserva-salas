@@ -37,7 +37,8 @@ type ValidateInput = {
 export function validateBooking({ booking, now, existing }: ValidateInput): BookingRuleViolation | null {
   const duration = minutesBetween(booking.startsAt, booking.endsAt);
 
-  if (duration <= 0) return "INVALID_RANGE";
+  // "!(duration > 0)" também pega datas inválidas (ex.: 31/02), cuja duração é NaN.
+  if (!(duration > 0)) return "INVALID_RANGE";
   if (booking.startsAt < now) return "IN_PAST";
   if (duration < MIN_DURATION_MINUTES) return "TOO_SHORT";
   if (duration > MAX_DURATION_MINUTES) return "TOO_LONG";

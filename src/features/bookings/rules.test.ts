@@ -50,6 +50,11 @@ describe("validateBooking", () => {
     expect(validate(range("10:00", "10:00"))).toBe("INVALID_RANGE");
   });
 
+  it("rejeita data inexistente", () => {
+    const booking = { startsAt: toUtcDate("2026-02-31", "09:00"), endsAt: toUtcDate("2026-02-31", "10:00") };
+    expect(validate(booking)).toBe("INVALID_RANGE");
+  });
+
   it("rejeita reserva no passado", () => {
     expect(validate(range("07:00", "07:30"))).toBe("IN_PAST");
   });

@@ -6,6 +6,15 @@ describe("time", () => {
     expect(toUtcDate("2026-10-20", "09:30").toISOString()).toBe("2026-10-20T12:30:00.000Z");
   });
 
+  it.each([
+    ["2026-02-31", "09:00"],
+    ["2026-13-01", "09:00"],
+    ["2026-10-20", "25:00"],
+    ["2026-10-20", "09:60"],
+  ])("devolve data inválida para %s %s (em vez de rolar para outro dia)", (date, time) => {
+    expect(Number.isNaN(toUtcDate(date, time).getTime())).toBe(true);
+  });
+
   it("formata de volta no horário de Brasília", () => {
     expect(formatTime(toUtcDate("2026-10-20", "09:30"))).toBe("09:30");
   });
