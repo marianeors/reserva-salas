@@ -1,3 +1,6 @@
+// Data Access Layer: único ponto de acesso ao banco para salas.
+// "server-only" faz o build falhar se este arquivo for importado no navegador.
+import "server-only";
 import { db } from "@/lib/db";
 import type { RoomFilters } from "./filters";
 
