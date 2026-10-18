@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { readRoomForm, validateRoomForm, type RoomFormValues } from "@/features/rooms/room-form";
 
-const valid: RoomFormValues = { name: "Sala Nova", capacity: "8", resourceIds: ["r1", "r2"], isActive: true };
+const valid: RoomFormValues = {
+  name: "Sala Nova",
+  capacity: "8",
+  maxDurationMinutes: "120",
+  resourceIds: ["r1", "r2"],
+  isActive: true,
+};
 
 describe("readRoomForm", () => {
   it("lê os campos do formulário, incluindo vários recursos e o checkbox", () => {
     const formData = new FormData();
     formData.append("name", "Sala Nova");
     formData.append("capacity", "8");
+    formData.append("maxDurationMinutes", "120");
     formData.append("resourceIds", "r1");
     formData.append("resourceIds", "r2");
     formData.append("isActive", "on");
@@ -23,9 +30,9 @@ describe("readRoomForm", () => {
 });
 
 describe("validateRoomForm", () => {
-  it("aceita dados válidos e converte a capacidade para número", () => {
+  it("aceita dados válidos e converte capacidade e duração para número", () => {
     const result = validateRoomForm(valid);
-    expect(result).toEqual({ ok: true, data: { ...valid, capacity: 8 } });
+    expect(result).toEqual({ ok: true, data: { ...valid, capacity: 8, maxDurationMinutes: 120 } });
   });
 
   it("remove espaços do nome", () => {
@@ -39,6 +46,8 @@ describe("validateRoomForm", () => {
     [{ capacity: "0" }, "A capacidade mínima é 1 pessoa."],
     [{ capacity: "101" }, "A capacidade máxima é 100 pessoas."],
     [{ capacity: "2.5" }, "A capacidade precisa ser um número inteiro."],
+    [{ maxDurationMinutes: "10" }, "A duração máxima precisa ser de pelo menos 15 minutos."],
+    [{ maxDurationMinutes: "481" }, "A duração máxima pode ser de até 480 minutos (8 h)."],
   ])("rejeita %j", (override, message) => {
     expect(validateRoomForm({ ...valid, ...override })).toEqual({ ok: false, message });
   });

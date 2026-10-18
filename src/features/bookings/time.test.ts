@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTime, minutesBetween, toUtcDate, todayInputValue } from "@/features/bookings/time";
+import { formatDuration, formatTime, minutesBetween, toUtcDate, todayInputValue } from "@/features/bookings/time";
 
 describe("time", () => {
   it("converte horário de Brasília para UTC (+3h)", () => {
@@ -17,6 +17,15 @@ describe("time", () => {
 
   it("formata de volta no horário de Brasília", () => {
     expect(formatTime(toUtcDate("2026-10-20", "09:30"))).toBe("09:30");
+  });
+
+  it.each([
+    [45, "45 min"],
+    [60, "1 h"],
+    [90, "1 h 30 min"],
+    [480, "8 h"],
+  ])("formata %i minutos como %j", (minutes, text) => {
+    expect(formatDuration(minutes)).toBe(text);
   });
 
   it("calcula a duração em minutos", () => {

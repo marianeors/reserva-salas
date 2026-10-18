@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_ROOM_DURATION_MINUTES, MIN_DURATION_MINUTES } from "@/features/bookings/rules";
 
 export const MAX_ROOM_CAPACITY = 100;
 
@@ -13,6 +14,11 @@ const roomFormSchema = z.object({
     .int("A capacidade precisa ser um número inteiro.")
     .min(1, "A capacidade mínima é 1 pessoa.")
     .max(MAX_ROOM_CAPACITY, `A capacidade máxima é ${MAX_ROOM_CAPACITY} pessoas.`),
+  maxDurationMinutes: z.coerce
+    .number({ error: "Informe a duração máxima." })
+    .int("A duração máxima precisa ser um número inteiro de minutos.")
+    .min(MIN_DURATION_MINUTES, `A duração máxima precisa ser de pelo menos ${MIN_DURATION_MINUTES} minutos.`)
+    .max(MAX_ROOM_DURATION_MINUTES, `A duração máxima pode ser de até ${MAX_ROOM_DURATION_MINUTES} minutos (8 h).`),
   resourceIds: z.array(z.string().min(1)),
   isActive: z.boolean(),
 });
@@ -22,6 +28,7 @@ export type RoomFormData = z.infer<typeof roomFormSchema>;
 export type RoomFormValues = {
   name: string;
   capacity: string;
+  maxDurationMinutes: string;
   resourceIds: string[];
   isActive: boolean;
 };
@@ -31,6 +38,7 @@ export function readRoomForm(formData: FormData): RoomFormValues {
   return {
     name: String(formData.get("name") ?? ""),
     capacity: String(formData.get("capacity") ?? ""),
+    maxDurationMinutes: String(formData.get("maxDurationMinutes") ?? ""),
     resourceIds: formData.getAll("resourceIds").map(String),
     isActive: formData.get("isActive") === "on",
   };
